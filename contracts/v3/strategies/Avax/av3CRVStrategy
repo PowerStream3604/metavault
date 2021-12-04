@@ -21,7 +21,7 @@ contract av3CrvStrategy is BaseStrategy {
     address public immutable usdt;
 
     Mintr public immutable crvMintr;
-    IStableSwap3WPool public immutable stableSwap3Pool;
+    IStableSwap3Pool public immutable stableSwap3Pool;
     Gauge public immutable gauge; // 3Crv Gauge
 
     constructor(
@@ -34,7 +34,7 @@ contract av3CrvStrategy is BaseStrategy {
         address _usdt,
         Gauge _gauge,
         Mintr _crvMintr,
-        IStableSwap3WPool _stableSwap3Pool,
+        IStableSwap3Pool _stableSwap3Pool,
         address _controller,
         address _manager,
         address[] memory _routerArray
