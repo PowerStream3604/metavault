@@ -6,6 +6,7 @@ interface Gauge {
     function balanceOf(address) external view returns (uint);
     function withdraw(uint) external;
     function claimable_tokens(address) external view returns (uint);
+    function claim_rewards() external;
 }
 
 interface Mintr {
