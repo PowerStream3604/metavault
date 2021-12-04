@@ -1,0 +1,159 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.6.12;
+
+import "../../../interfaces/Gauge.sol";
+import "../../../interfaces/Balancer.sol";
+
+import "../../interfaces/ExtendedIERC20.sol";
+
+import "./BaseStrategy.sol";
+
+import '../../interfaces/IHarvester.sol';
+import '../../interfaces/IStableSwap2Pool.sol';
+
+contract aaWBTCrenBTCStrategy is BaseStrategy {
+    // used for Crv -> wAVAX -> WBTC -> LP route
+    address public immutable crv;
+
+    // for add_liquidity via avax.curve.fi to get back LP
+    address public immutable wbtc;
+
+    IStableSwap2Pool public immutable stableSwap2Pool;
+    Gauge public immutable gauge; // 3Crv Gauge
+
+    constructor(
+        string memory _name,
+        address _want,
+        address _crv,
+        address _wavax,
+        address _wbtc,
+        Gauge _gauge,
+        IStableSwap2Pool _stableSwap2Pool,
+        address _controller,
+        address _manager,
+        address[] memory _routerArray
+    )
+        public
+        BaseStrategy(_name, _controller, _manager, _want, _wavax, _routerArray)
+    {
+        crv = _crv;
+        wbtc = _wbtc;
+        stableSwap2Pool = _stableSwap2Pool;
+        gauge = _gauge;
+        IERC20(_want).safeApprove(address(_gauge), type(uint256).max);
+        IERC20(_crv).safeApprove(address(_routerArray[0]), type(uint256).max);
+        IERC20(_wbtc).safeApprove(address(_stableSwap2Pool), type(uint256).max);
+        IERC20(_want).safeApprove(address(_stableSwap2Pool), type(uint256).max);
+    }
+
+    function _deposit()
+        internal
+        override
+    {
+        uint256 _wantBal = balanceOfWant();
+        if (_wantBal > 0) {
+            // deposit [want] to Gauge
+            gauge.deposit(_wantBal);
+        }
+    }
+
+    function _claimReward()
+        internal
+    {
+        gauge.claim_rewards();
+    }
+
+    function _addLiquidity(uint256 _estimate)
+        internal
+    {
+        uint256[2] memory amounts;
+        amounts[0] = IERC20(wbtc).balanceOf(address(this));
+        amounts[1] = 0;
+        stableSwap2Pool.add_liquidity(amounts, _estimate, true);
+    }
+
+    function _harvest(
+        uint256[] calldata _estimates
+    )
+        internal
+        override
+    {
+        _claimReward();
+        uint256 _remainingWavax = _payHarvestFees(crv, _estimates[0], _estimates[1], 0);
+
+        if (_remainingWavax > 0) {
+            _swapTokens(wavax, wbtc, _remainingWavax, _estimates[2]);
+            _addLiquidity(_estimates[3]);
+
+            _deposit();
+        }
+    }
+
+    function getEstimates() external view returns (uint256[] memory) {
+            
+        uint256[] memory _estimates = new uint256[](4);
+        address[] memory _path = new address[](2);
+        uint256[] memory _amounts;
+        uint256 _notSlippage = ONE_HUNDRED_PERCENT.sub(IHarvester(manager.harvester()).slippage());
+        uint256 wavaxAmount;
+
+        // Estimates for CRV -> wAVAX
+        _path[0] = crv;
+        _path[1] = wavax;
+        _amounts = router.getAmountsOut(
+            gauge.claimable_reward(address(this), crv),
+            _path
+        );
+        _estimates[0] = _amounts[1].mul(_notSlippage).div(ONE_HUNDRED_PERCENT);
+
+        wavaxAmount += _estimates[0];
+        
+
+        // Estimates wAVAX -> YAXIS
+        _path[0] = wavax;
+        _path[1] = manager.yaxis();
+        _amounts = ISwap(routerArray[0]).getAmountsOut(wavaxAmount.mul(manager.treasuryFee()).div(ONE_HUNDRED_PERCENT), _path);
+        _estimates[1] = _amounts[1].mul(_notSlippage).div(ONE_HUNDRED_PERCENT);
+        
+        // Estimates for wAVAX -> WBTC
+        _path[0] = wavax;
+        _path[1] = wbtc;
+        _amounts = router.getAmountsOut(
+            wavaxAmount - _amounts[0],
+            _path
+        );
+        _estimates[2] = _amounts[1].mul(_notSlippage).div(ONE_HUNDRED_PERCENT);
+
+        // Estimates for WBTC -> LP
+        _estimates[3] = (_amounts[1].mul(10**(18-ExtendedIERC20(wbtc).decimals())).div(stableSwap2Pool.get_virtual_price())).mul(_notSlippage).div(ONE_HUNDRED_PERCENT);
+        
+        return _estimates;
+    }
+
+    function _withdrawAll()
+        internal
+        override
+    {
+        uint256 _bal = gauge.balanceOf(address(this));
+        _withdraw(_bal);
+    }
+
+    function _withdraw(
+        uint256 _amount
+    )
+        internal
+        override
+    {
+        gauge.withdraw(_amount);
+    }
+
+    function balanceOfPool()
+        public
+        view
+        override
+        returns (uint256)
+    {
+        return gauge.balanceOf(address(this));
+    }
+}
