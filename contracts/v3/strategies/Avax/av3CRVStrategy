@@ -138,12 +138,14 @@ contract av3CrvStrategy is BaseStrategy {
         _path[0] = crv;
         _path[1] = wavax;
         _amounts = router.getAmountsOut(
-            gauge.claimable_tokens(address(this)),
+            gauge.claimable_reward(address(this), crv),
             _path
         );
         _estimates[0] = _amounts[1].mul(_notSlippage).div(ONE_HUNDRED_PERCENT);
 
-        wavaxAmount += _estimates[0];
+        // Also adds wAVAX rewards
+        wavaxAmount += _estimates[0].add(gauge.claimable_reward(address(this), wavax);
+        
 
         // Estimates wAVAX -> YAXIS
         _path[0] = wavax;
