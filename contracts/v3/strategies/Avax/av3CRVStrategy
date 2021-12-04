@@ -10,6 +10,7 @@ import "../../interfaces/ExtendedIERC20.sol";
 import "./BaseStrategy.sol";
 
 import '../../interfaces/IHarvester.sol';
+import '../../interfaces/IStableSwap3Pool.sol';
 
 contract av3CrvStrategy is BaseStrategy {
     // used for Crv -> wAVAX -> [dai/usdc/usdt] -> 3crv route
