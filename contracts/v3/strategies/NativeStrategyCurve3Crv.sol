@@ -10,6 +10,8 @@ import "../interfaces/ExtendedIERC20.sol";
 import "./BaseStrategy.sol";
 
 import '../interfaces/IHarvester.sol';
+import '../interfaces/IStableSwap3Pool.sol';
+
 
 contract NativeStrategyCurve3Crv is BaseStrategy {
     // used for Crv -> weth -> [dai/usdc/usdt] -> 3crv route
