@@ -109,7 +109,6 @@ contract aaWBTCrenBTCStrategy is BaseStrategy {
 
         wavaxAmount += _estimates[0];
         
-
         // Estimates wAVAX -> YAXIS
         _path[0] = wavax;
         _path[1] = manager.yaxis();
