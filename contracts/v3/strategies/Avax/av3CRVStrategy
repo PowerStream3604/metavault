@@ -116,11 +116,11 @@ contract av3CrvStrategy is BaseStrategy {
         override
     {
         _claimReward();
-        uint256 _remainingWeth = _payHarvestFees(crv, _estimates[0], _estimates[1], 0);
+        uint256 _remainingWavax = _payHarvestFees(crv, _estimates[0], _estimates[1], 0);
 
-        if (_remainingWeth > 0) {
+        if (_remainingWavax > 0) {
             (address _stableCoin,) = getMostPremium(); // stablecoin we want to convert to
-            _swapTokens(wavax, _stableCoin, _remainingWeth, _estimates[2]);
+            _swapTokens(wavax, _stableCoin, _remainingWavax, _estimates[2]);
             _addLiquidity(_estimates[3]);
 
             _deposit();
@@ -137,7 +137,7 @@ contract av3CrvStrategy is BaseStrategy {
 
         // Estimates for CRV -> wAVAX
         _path[0] = crv;
-        _path[1] = weth;
+        _path[1] = wavax;
         _amounts = router.getAmountsOut(
             gauge.claimable_tokens(address(this)),
             _path
@@ -147,7 +147,7 @@ contract av3CrvStrategy is BaseStrategy {
         wavaxAmount += _estimates[0];
 
         // Estimates wAVAX -> YAXIS
-        _path[0] = weth;
+        _path[0] = wavax;
         _path[1] = manager.yaxis();
         _amounts = ISwap(routerArray[0]).getAmountsOut(wavaxAmount.mul(manager.treasuryFee()).div(ONE_HUNDRED_PERCENT), _path);
         _estimates[1] = _amounts[1].mul(_notSlippage).div(ONE_HUNDRED_PERCENT);
