@@ -7,6 +7,7 @@ interface Gauge {
     function withdraw(uint) external;
     function claimable_tokens(address) external view returns (uint);
     function claim_rewards() external;
+    function claimable_reward(address _addr, address _token) external view returns (uint);
 }
 
 interface Mintr {
